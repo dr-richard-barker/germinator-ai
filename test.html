@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Germinator AI — Smoke Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #e0e0e0; }
+    .pass { color: #66bb6a; }
+    .fail { color: #ef5350; }
+    .info { color: #42a5f5; }
+    pre { white-space: pre-wrap; }
+    #log { max-height: 80vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h2>🧪 Germinator AI — Smoke Test</h2>
+  <div id="log"></div>
+
+  <script type="module">
+    const logEl = document.getElementById('log');
+    let passed = 0, failed = 0;
+
+    function log(msg, cls = '') {
+      const div = document.createElement('div');
+      div.className = cls;
+      div.textContent = msg;
+      logEl.appendChild(div);
+    }
+
+    function assert(condition, label) {
+      if (condition) { log(`  ✅ ${label}`, 'pass'); passed++; }
+      else { log(`  ❌ ${label}`, 'fail'); failed++; }
+    }
+
+    try {
+      // ── 1. Math Utils ──────────────────────────────────────────
+      log('\n▶ Math Utils', 'info');
+      const mu = await import('./js/core/math-utils.js');
+      assert(typeof mu.median === 'function', 'median exported');
+      assert(typeof mu.mad === 'function', 'mad exported');
+      assert(typeof mu.mean === 'function', 'mean exported');
+      assert(typeof mu.argsort === 'function', 'argsort exported');
+      assert(typeof mu.cumsum === 'function', 'cumsum exported');
+      assert(typeof mu.logaddexp === 'function', 'logaddexp exported');
+      assert(typeof mu.trapezoid === 'function', 'trapezoid exported');
+      assert(mu.median([3, 1, 2]) === 2, 'median([3,1,2]) === 2');
+      assert(Math.abs(mu.mean([1, 2, 3]) - 2) < 1e-9, 'mean([1,2,3]) === 2');
+
+      // ── 2. Segment ─────────────────────────────────────────────
+      log('\n▶ Segment', 'info');
+      const seg = await import('./js/core/segment.js');
+      assert(typeof seg.foreground_mask === 'function', 'foreground_mask exported');
+      assert(typeof seg.fit_background === 'function', 'fit_background exported');
+      assert(typeof seg.BackgroundModel === 'function', 'BackgroundModel exported');
+
+      // ── 3. Calibrate ───────────────────────────────────────────
+      log('\n▶ Calibrate', 'info');
+      const cal = await import('./js/core/calibrate.js');
+      assert(typeof cal.fit_scale === 'function', 'fit_scale exported');
+      assert(typeof cal.ScaleModel === 'function', 'ScaleModel exported');
+      assert(typeof cal.DEBRIS_AREA === 'number', 'DEBRIS_AREA constant');
+      assert(typeof cal.GEODESIC_CAP_DIAMETERS === 'number', 'GEODESIC_CAP_DIAMETERS constant');
+
+      // ── 4. Objects ─────────────────────────────────────────────
+      log('\n▶ Objects', 'info');
+      const obj = await import('./js/core/objects.js');
+      assert(typeof obj.measure === 'function', 'measure exported');
+      assert(typeof obj.labelConnectedComponents === 'function', 'labelConnectedComponents exported');
+
+      // ── 5. Register ────────────────────────────────────────────
+      log('\n▶ Register', 'info');
+      const reg = await import('./js/core/register.js');
+      assert(typeof reg.estimate_shift === 'function', 'estimate_shift exported');
+      assert(typeof reg.chain_shifts === 'function', 'chain_shifts exported');
+      assert(typeof reg.register_series === 'function', 'register_series exported');
+
+      // ── 6. Track ───────────────────────────────────────────────
+      log('\n▶ Track', 'info');
+      const trk = await import('./js/core/track.js');
+      assert(typeof trk.Seed === 'function', 'Seed exported');
+      assert(typeof trk.FrameAssignment === 'function', 'FrameAssignment exported');
+      assert(typeof trk.buildRegistry === 'function', 'buildRegistry exported');
+      assert(typeof trk.assignFrame === 'function', 'assignFrame exported');
+
+      // ── 7. Score ───────────────────────────────────────────────
+      log('\n▶ Score', 'info');
+      const sc = await import('./js/core/score.js');
+      assert(typeof sc.SeedTrack === 'function', 'SeedTrack exported');
+      assert(typeof sc.frame_scores === 'function', 'frame_scores exported');
+      assert(typeof sc.call_onset === 'function', 'call_onset exported');
+
+      // ── 8. Curves ──────────────────────────────────────────────
+      log('\n▶ Curves', 'info');
+      const cu = await import('./js/core/curves.js');
+      assert(typeof cu.parametersFromTimes === 'function', 'parametersFromTimes exported');
+      assert(typeof cu.fitHill === 'function', 'fitHill exported');
+      assert(typeof cu.empiricalCurve === 'function', 'empiricalCurve exported');
+
+      // ── 9. Pipeline ────────────────────────────────────────────
+      log('\n▶ Pipeline', 'info');
+      const pipe = await import('./js/core/pipeline.js');
+      assert(typeof pipe.analyseSeries === 'function', 'analyseSeries exported');
+      assert(typeof pipe.SeriesResult === 'function', 'SeriesResult exported');
+
+      // ── 10. Demo Data ──────────────────────────────────────────
+      log('\n▶ Demo Data Generation', 'info');
+      const dd = await import('./js/core/demo-data.js');
+      assert(typeof dd.generateDemoDataset === 'function', 'generateDemoDataset exported');
+
+      const demo = dd.generateDemoDataset();
+      assert(demo.images.length === 6, `Generated ${demo.images.length} frames (expect 6)`);
+      assert(demo.hours.length === 6, `${demo.hours.length} hour stamps`);
+      assert(demo.images[0].width === 800, `Frame width = ${demo.images[0].width}`);
+      assert(demo.images[0].height === 600, `Frame height = ${demo.images[0].height}`);
+      assert(demo.images[0].data instanceof Float32Array, 'Float32Array data');
+      assert(demo.images[0].data.length === 800 * 600 * 3, 'Correct data length');
+      assert(demo.metadata.n_seeds > 30, `${demo.metadata.n_seeds} seeds generated`);
+
+      // ── 11. Pipeline on Demo ───────────────────────────────────
+      log('\n▶ Full Pipeline on Demo Dataset', 'info');
+      log('  ⏳ Running analysis (this may take a moment)...', 'info');
+
+      const t0 = performance.now();
+      let result;
+      try {
+        result = pipe.analyseSeries(demo.images, demo.hours);
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        assert(result !== null, `Pipeline completed in ${elapsed}s`);
+        assert(result.nSeeds > 0, `Detected ${result.nSeeds} seeds`);
+
+        // Check germination times
+        const germTimes = result.germinationTimes();
+        assert(Array.isArray(germTimes), 'germinationTimes() returns array');
+        log(`  ℹ️  Germination times: ${germTimes.filter(t => t != null).length} germinated of ${result.nSeeds}`, 'info');
+
+        // Check params
+        const params = cu.parametersFromTimes(germTimes, demo.hours);
+        if (params.t50 != null) {
+          assert(params.t50 > 0 && params.t50 < 100, `t₅₀ = ${params.t50.toFixed(1)}h`);
+        } else {
+          log('  ⚠️  t₅₀ not computed (may need more germination)', 'info');
+        }
+
+        // Check QC
+        const qc = result.qc();
+        assert(typeof qc === 'object', 'qc() returns object');
+        log(`  ℹ️  QC: anchor_ret=${(qc.min_anchor_retention ?? 0).toFixed(2)}, orphan=${(qc.max_orphan_fraction ?? 0).toFixed(3)}`, 'info');
+
+      } catch (pipeErr) {
+        log(`  ❌ Pipeline error: ${pipeErr.message}`, 'fail');
+        log(`     Stack: ${pipeErr.stack}`, 'fail');
+        failed++;
+      }
+
+      // ── 12. Uploader ───────────────────────────────────────────
+      log('\n▶ Uploader', 'info');
+      const up = await import('./js/ui/uploader.js');
+      assert(typeof up.Uploader === 'function', 'Uploader exported');
+
+    } catch (err) {
+      log(`\n💥 FATAL: ${err.message}`, 'fail');
+      log(err.stack, 'fail');
+      failed++;
+    }
+
+    // ── Summary ────────────────────────────────────────────────
+    log('\n' + '═'.repeat(50), 'info');
+    log(`  ${passed} passed, ${failed} failed`, failed > 0 ? 'fail' : 'pass');
+    log('═'.repeat(50), 'info');
+
+    document.title = failed > 0 ? `❌ ${failed} FAILED` : `✅ ALL ${passed} PASSED`;
+  </script>
+</body>
+</html>
