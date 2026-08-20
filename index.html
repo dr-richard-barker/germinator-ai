@@ -17,6 +17,15 @@
 
   <!-- Design System (CoSE Theme) -->
   <link rel="stylesheet" href="css/germinator.css">
+  <link rel="stylesheet" href="https://dr-richard-barker.github.io/Plant_response_to_radiation/cose/cose-theme.css" />
+  <link rel="stylesheet" href="https://dr-richard-barker.github.io/Plant_response_to_radiation/cose/cose-chrome.css" />
+  <link rel="stylesheet" href="https://dr-richard-barker.github.io/Plant_response_to_radiation/cose/cose-map.css" />
+  <style>
+    /* Ensure the CoSE rail layout is layered correctly above custom styles */
+    .topbar.cose-dark, .topbar.cose-light{z-index:10001!important}
+    .sitebar.cose-dark, .sitebar.cose-light{z-index:10000!important}
+    .map-scrim{z-index:9999!important}
+  </style>
 
   <!-- Theme Initialiser (prevents FOUC) -->
   <script>
@@ -26,8 +35,16 @@
       document.documentElement.dataset.theme = saved || prefer;
     })();
   </script>
+
+  <script>
+    /* Embedded inside the AstroBotany calibration database (?embed=1): hide
+       this tool's own header/footer chrome so it blends into the iframe. */
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.documentElement.classList.add('cose-embed');
+    }
+  </script>
 </head>
-<body>
+<body data-site-id="germinator-ai" data-brand-logo="assets/cose-logo.png">
 
   <!-- ═══════ HEADER (CoSE Blue Bar) ═══════ -->
   <header id="app-header">
@@ -75,21 +92,22 @@
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <h2>Drop images or a ZIP file</h2>
+            <h2>Drop images, a ZIP file, or a time-lapse video</h2>
             <p class="drop-hint">
-              Drag &amp; drop image files, a <strong>.zip</strong> archive, or
+              Drag &amp; drop image files, a <strong>.zip</strong> archive, a video file, or
               <button class="link-btn" id="btn-browse">browse files</button>
             </p>
-            <p class="drop-subhint">Supports single images, multiple files, or ZIP folders</p>
+            <p class="drop-subhint">Supports single images, multiple files, ZIP folders, or one time-lapse video (frames are extracted automatically)</p>
             <div class="upload-formats">
               <span class="format-badge">📷 JPEG</span>
               <span class="format-badge">🖼️ PNG</span>
               <span class="format-badge">🔬 TIFF</span>
               <span class="format-badge">🌐 WEBP</span>
               <span class="format-badge">📁 ZIP</span>
+              <span class="format-badge">🎬 MP4/MOV</span>
             </div>
           </div>
-          <input type="file" id="file-input" accept="image/*,.zip,.tif,.tiff" multiple hidden>
+          <input type="file" id="file-input" accept="image/*,.zip,.tif,.tiff,video/*" multiple hidden>
         </div>
       </div>
 
@@ -114,10 +132,11 @@
           <div class="tutorial-card" id="card-upload-types">
             <div class="card-icon">📁</div>
             <h3>Upload Methods</h3>
-            <p>Three ways to load your data:</p>
+            <p>Four ways to load your data:</p>
             <ul>
               <li><strong>Individual files</strong> — select or drag multiple images</li>
               <li><strong>ZIP archive</strong> — drop a <code>.zip</code> containing your image series</li>
+              <li><strong>Time-lapse video</strong> — drop a single video file and choose how many evenly-spaced frames to extract</li>
               <li><strong>Demo dataset</strong> — click below to load a sample Arabidopsis time-series</li>
             </ul>
             <p style="margin-top: 8px;">Files are sorted by name (use zero-padded numbering, e.g. <code>frame_001.jpg</code> or timestamps like <code>041224_1430.jpg</code>).</p>
@@ -303,6 +322,26 @@
     </div>
   </div>
 
+  <!-- ═══════ VIDEO EXTRACTION OPTIONS ═══════ -->
+  <div id="video-options-overlay" class="processing-overlay hidden">
+    <div class="processing-card glass form-card">
+      <h3>Extract frames from video</h3>
+      <p id="video-options-name" class="form-filename"></p>
+      <div class="form-row">
+        <label for="video-frame-count">Frames to extract</label>
+        <input type="number" id="video-frame-count" min="2" max="40" value="12">
+      </div>
+      <div class="form-row">
+        <label for="video-total-hours">Time span this video covers (hours)</label>
+        <input type="number" id="video-total-hours" min="1" max="2000" step="1" value="144">
+      </div>
+      <div class="form-actions">
+        <button class="btn-secondary" id="btn-video-cancel">Cancel</button>
+        <button class="btn-primary" id="btn-video-extract">Extract frames</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════ FOOTER ═══════ -->
   <footer class="app-footer">
     <img src="assets/cose-logo.png" alt="" style="height: 14px; width: 14px; border-radius: 2px;">
@@ -315,7 +354,7 @@
 
   <!-- ═══════ Scripts ═══════ -->
   <!-- JSZip for ZIP extraction (lightweight, MIT licensed) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDFuGW4A34J7Y0gA1D+GRIKnLa5LC0MyluRNSFx+A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- Theme Toggle Logic -->
   <script>
@@ -330,5 +369,7 @@
 
   <!-- Application (ES Module) -->
   <script type="module" src="js/app.js"></script>
+  <script src="https://dr-richard-barker.github.io/Plant_response_to_radiation/cose/sites.js"></script>
+  <script src="https://dr-richard-barker.github.io/Plant_response_to_radiation/cose/theme.js"></script>
 </body>
 </html>

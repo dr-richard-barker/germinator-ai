@@ -4,6 +4,7 @@
  *
  * Emits:
  *   'files-selected'  — detail: Array<{file: File|Blob, name: string}>
+ *   'video-selected'  — detail: {file: File}
  *   'upload-error'    — detail: {message: string}
  *   'upload-progress' — detail: {status: string}
  */
@@ -12,7 +13,12 @@ const IMAGE_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp',
 ]);
 
+const VIDEO_EXTENSIONS = new Set([
+  '.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v',
+]);
+
 const IMAGE_MIME_PREFIX = 'image/';
+const VIDEO_MIME_PREFIX = 'video/';
 
 /**
  * Is this File (or filename) an image we can handle?
@@ -21,6 +27,15 @@ function isImage(nameOrFile) {
   const name = typeof nameOrFile === 'string' ? nameOrFile : nameOrFile.name;
   const ext = name.slice(name.lastIndexOf('.')).toLowerCase();
   return IMAGE_EXTENSIONS.has(ext);
+}
+
+/**
+ * Is this a video file we can extract frames from?
+ */
+function isVideo(file) {
+  if (file.type.startsWith(VIDEO_MIME_PREFIX)) return true;
+  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  return VIDEO_EXTENSIONS.has(ext);
 }
 
 /**
@@ -135,6 +150,16 @@ export class Uploader extends EventTarget {
     // Check for ZIP files
     const zipFiles = files.filter(isZip);
     const imageFiles = files.filter(f => !isZip(f) && (f.type.startsWith(IMAGE_MIME_PREFIX) || isImage(f)));
+
+    // A single video file (with no images/ZIPs alongside it) is routed
+    // separately for frame extraction, not treated as an unsupported file.
+    if (zipFiles.length === 0 && imageFiles.length === 0) {
+      const videoFiles = files.filter(isVideo);
+      if (videoFiles.length === 1) {
+        this.dispatchEvent(new CustomEvent('video-selected', { detail: { file: videoFiles[0] } }));
+        return;
+      }
+    }
 
     let allImages = imageFiles.map(f => ({ file: f, name: f.name }));
 
