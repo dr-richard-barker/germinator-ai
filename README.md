@@ -2,7 +2,7 @@
 
 **Germinator AI** is a professional, browser-native seed germination analysis tool. It processes time-lapse images of germinating seeds and automatically scores germination onset times, extracts morphological features, and fits standard germination curves (like the 4-parameter Hill function). 
 
-This project is a JavaScript/WebAssembly port of the original Python [GERMINATOR](https://doi.org/10.1111/j.1365-313X.2010.04236.x) package (Joosen et al., 2010), completely modernized and designed to run entirely locally in your browser with zero server-side processing.
+This project is a JavaScript port of the original Python [GERMINATOR](https://doi.org/10.1111/j.1365-313X.2009.04116.x) package (Joosen et al., 2010), completely modernized and designed to run entirely locally in your browser with zero server-side processing.
 
 It is part of the **CoSE AstroBotany suite**.
 
