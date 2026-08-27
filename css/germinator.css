@@ -867,6 +867,38 @@ body {
   .tutorial-cards { grid-template-columns: 1fr; }
 }
 
+/* ─── CoSE embed mode (?embed=1) ───────────────────────────────────────── */
+.cose-embed #app-header,
+.cose-embed .app-footer,
+.cose-embed .topbar,
+.cose-embed .sitebar,
+.cose-embed .map-scrim,
+.cose-embed .cose-theme-btn,
+.cose-embed .map-toggle,
+.cose-embed .cose-brand { display: none !important; }
+
+/* ─── Video-extraction options form ───────────────────────────────────── */
+.form-card { text-align: left; min-width: 320px; }
+.form-card h3 { text-align: center; }
+.form-filename {
+  font-size: 0.75rem; color: var(--text-muted); text-align: center;
+  margin-bottom: var(--space-md); word-break: break-all;
+}
+.form-row { margin-bottom: var(--space-md); }
+.form-row label {
+  display: block; font-size: 0.78rem; color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}
+.form-row input[type="number"] {
+  width: 100%; padding: 8px 10px; font-size: 0.85rem;
+  background: var(--bg-elevated); color: var(--text-primary);
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+}
+.form-row input[type="number"]:focus {
+  outline: none; border-color: var(--border-focus);
+}
+.form-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-lg); }
+
 /* ─── Entrance Animations ──────────────────────────────────────────────── */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(12px); }

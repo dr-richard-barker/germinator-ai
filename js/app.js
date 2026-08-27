@@ -7,8 +7,10 @@
 
 import { analyseSeries } from './core/pipeline.js';
 import { parametersFromTimes, fitHill, empiricalCurve } from './core/curves.js';
+import { canvasToFrame } from './core/frame-utils.js';
 import { Uploader } from './ui/uploader.js';
 import { generateDemoDataset } from './core/demo-data.js';
+import { extractFramesFromVideo } from './ui/video-extractor.js';
 
 // ─── State ────────────────────────────────────────────────────────────────
 
@@ -93,6 +95,14 @@ const dom = {
   processStatus:     $('process-status'),
   progressFill:      $('progress-fill'),
 
+  // Video extraction options
+  videoOptionsOverlay: $('video-options-overlay'),
+  videoOptionsName:    $('video-options-name'),
+  videoFrameCount:     $('video-frame-count'),
+  videoTotalHours:     $('video-total-hours'),
+  btnVideoCancel:      $('btn-video-cancel'),
+  btnVideoExtract:     $('btn-video-extract'),
+
   // Export
   btnExportCsv:     $('btn-export-csv'),
   btnExportJson:    $('btn-export-json'),
@@ -113,6 +123,10 @@ uploader.addEventListener('upload-progress', (e) => {
 uploader.addEventListener('upload-error', (e) => {
   console.error('Upload error:', e.detail.message);
   alert(e.detail.message);
+});
+
+uploader.addEventListener('video-selected', (e) => {
+  handleVideoFile(e.detail.file);
 });
 
 // Drop zone click (outside the browse button) also triggers file input
@@ -218,26 +232,81 @@ function loadImage(fileOrBlob) {
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
       canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, img.width, img.height);
-      const rgba = imageData.data;
-
-      const n = img.width * img.height;
-      const data = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        data[i * 3]     = rgba[i * 4]     / 255.0;
-        data[i * 3 + 1] = rgba[i * 4 + 1] / 255.0;
-        data[i * 3 + 2] = rgba[i * 4 + 2] / 255.0;
-      }
-
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      const frame = canvasToFrame(canvas);
       URL.revokeObjectURL(img.src);
-      resolve({ data, width: img.width, height: img.height, channels: 3 });
+      resolve(frame);
     };
     img.onerror = reject;
     img.src = URL.createObjectURL(fileOrBlob);
   });
 }
+
+// ─── Video (time-lapse) ─────────────────────────────────────────────────
+
+/**
+ * Ask the user how many frames to extract and what real-world time span the
+ * video covers, then run extraction and feed the result into the pipeline
+ * exactly like a file-based series would.
+ * @param {File} file
+ */
+async function handleVideoFile(file) {
+  const opts = await promptVideoOptions(file.name);
+  if (!opts) return; // cancelled
+
+  state.fileEntries = [];
+  transitionToWorkspace();
+  showProcessing('Extracting frames…', `Reading ${file.name}`);
+  await tick();
+
+  try {
+    const { images, hours } = await extractFramesFromVideo(file, opts, (i, n) => {
+      updateProcessing('Extracting frames…', `Frame ${i} of ${n}`, (i / n) * 100);
+    });
+    state.images = images;
+    state.hours = hours;
+  } catch (err) {
+    console.error('Video extraction failed:', err);
+    hideProcessing();
+    alert(`Could not extract frames: ${err.message}`);
+    resetToUpload();
+    return;
+  }
+
+  updateProcessing('Analysing…', 'Running segmentation pipeline');
+  await tick();
+  runAnalysis();
+}
+
+/**
+ * Show the frame-count / time-span mini-form and resolve with the user's
+ * choice, or null if they cancel.
+ * @param {string} filename
+ * @returns {Promise<{frameCount: number, totalHours: number}|null>}
+ */
+function promptVideoOptions(filename) {
+  return new Promise((resolve) => {
+    dom.videoOptionsName.textContent = filename;
+    dom.videoOptionsOverlay.classList.remove('hidden');
+
+    const cleanup = () => {
+      dom.videoOptionsOverlay.classList.add('hidden');
+      dom.btnVideoCancel.removeEventListener('click', onCancel);
+      dom.btnVideoExtract.removeEventListener('click', onExtract);
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+    const onExtract = () => {
+      const frameCount = clamp(parseInt(dom.videoFrameCount.value, 10) || 12, 2, 40);
+      const totalHours = clamp(parseFloat(dom.videoTotalHours.value) || 144, 1, 2000);
+      cleanup();
+      resolve({ frameCount, totalHours });
+    };
+    dom.btnVideoCancel.addEventListener('click', onCancel);
+    dom.btnVideoExtract.addEventListener('click', onExtract);
+  });
+}
+
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
 // ─── Analysis ─────────────────────────────────────────────────────────────
 
